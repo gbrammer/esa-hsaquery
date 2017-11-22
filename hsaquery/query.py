@@ -34,123 +34,8 @@ ARTIFACT.FILE_EXTENSION
 """
 
 DEFAULT_RENAME = {'OPTICAL_ELEMENT_NAME':'FILTER', 'EXPOSURE_DURATION':'EXPTIME', 'INSTRUMENT_NAME':'INSTRUMENT', 'DETECTOR_NAME':'DETECTOR', 'STC_S':'FOOTPRINT', 'SPATIAL_RESOLUTION':'PIXSCALE', 'TARGET_NAME':'TARGET', 'SET_ID':'VISIT'}
-
-def demo():
-    
-    import esa_query
-    
-    # Query around GN-z11 program
-    tab = esa_query.run_query(box=None, proposid=[13871], instruments=['WFC3', 'ACS'], filters=[])
-    tab['orientat'] = [esa_query.get_orientat(p) for p in tab['footprint']]
-    
-    # Search imaging around the center
-    box = [np.median(tab['ra']), np.median(tab['dec']), 8]
-    
-    fig = plt.figure(figsize=[12,3.5])
-    ax = fig.add_subplot(141)
-    esa_query.show_footprints(tab, ax=ax)
-    ax.set_title('13871')
-    
-    for i, filt in enumerate(['G102', 'F140W', 'F775W']):
-        print(filt)
-        itab = esa_query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], filters=[filt])
-    
-        ax = fig.add_subplot(142+i)
-        esa_query.show_footprints(itab, ax=ax)
-        ax.set_title(filt)
-    
-    for ax in fig.axes:        
-        ax.set_xlim(189.46939409999999, 188.89701790000001)
-        ax.set_ylim(62.078094353454389, 62.402351754992722)
-        ax.grid()
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-    
-    fig.tight_layout(pad=0.2)
-    fig.savefig('esa_query_demo.png')
-    
-    # Bielby
-    tab = esa_query.run_query(box=None, proposid=[14594], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['G141'])
-    
-    tab = esa_query.run_query(box=None, proposid=[12177], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['G141'])
-    targets = np.unique(tab['target'])
-    
-    # WISP
-    tab = esa_query.run_query(box=None, proposid=[14178], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['G102','G141'])
-    targets = np.unique(tab['jtargname'])
-    
-    for target in targets:
-        print(target)
-        m = tab['jtargname'] == target
-        box = [np.median(tab['ra'][m]), np.median(tab['dec'][m]), 10]
-        xtab = esa_query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=[])
-        
-        fig = plt.figure(figsize=[5,5])
-        ax = fig.add_subplot(111)
-        esa_query.show_footprints(tab[m], ax=ax)
-        esa_query.show_footprints(xtab, ax=ax)
-        ax.set_title(target)
-        ax.grid()
-        fig.tight_layout(pad=0.1)
-        
-        fig.savefig('{0}_footprint.png'.format(target))
-        
-    #
-    from shapely.geometry import Polygon
-    polygons = []
-    for i in range(len(tab)):
-        poly = parse_polygons(tab['footprint'][i])#[0]
-        pshape = [Polygon(p) for p in poly]
-        for i in range(1,len(poly)):
-            pshape[0] = pshape[0].union(pshape[i])
-        
-        polygons.append(pshape[0].buffer(2./60))
-    
-    match_poly = [polygons[0]]
-    match_ids = [[0]]
-    
-    for i in range(1,len(tab)):
-        print(i)
-        has_match = False
-        for j in range(len(match_poly)):
-            isect = match_poly[j].intersection(polygons[i])
-            #print(tab['target'][i], i, isect.area > 0)
-            if isect.area > 0:
-                match_poly[j] = match_poly[j].union(polygons[i])
-                match_ids[j].append(i)
-                has_match = True
-                continue
                 
-        if not has_match:
-            match_poly.append(polygons[i])
-            match_ids.append([i])
-    
-    from descartes import PolygonPatch
-    BLUE = '#6699cc'
-    for i in range(len(match_poly)):
-        #i+=1
-        p = match_poly[i]
-        print(i)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        idx = np.array(match_ids[i])
-        esa_query.show_footprints(tab[idx], ax=ax)
-
-        if True:
-            box = [np.median(tab['ra'][idx]), np.median(tab['dec'][idx]), 6]
-            xtab = esa_query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS', 'WFPC2'], extensions=['FLT','C1M'], filters=[])
-            esa_query.show_footprints(xtab, ax=ax)
-        
-        patch1 = PolygonPatch(p, fc=BLUE, ec=BLUE, alpha=0.1, zorder=2)
-        
-        xy = p.boundary.xy
-        ax.plot(xy[0], xy[1])
-        ax.add_patch(patch1)
-        
-        ax.grid()
-        
-                
-def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW'], extra=["OBSERVATION.INTENT LIKE 'Science'"],  fields=','.join(DEFAULT_FIELDS.split()), maxitems=1000, rename_columns=DEFAULT_RENAME, lower=True, sort=['OBSERVATION_ID'], remove_tempfile=True):
+def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW'], extra=["OBSERVATION.INTENT LIKE 'Science'"],  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True):
     """
     
     Optional position box query:
@@ -191,8 +76,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
     if len(extensions) > 0:
         equery = ' OR '.join(['ARTIFACT.FILE_EXTENSION LIKE \'{0}\''.format(p) for p in extensions])
         qlist.append('({0})'.format(equery))
-    
-            
+        
     query = "http://archives.esac.esa.int/ehst-sl-server/servlet/metadata-action?RESOURCE_CLASS=OBSERVATION&QUERY=({0})&SELECTED_FIELDS={1}&PAGE=1&PAGE_SIZE={2}&RETURN_TYPE=CSV".format(' AND '.join(qlist+extra), fields, maxitems).replace(' ','%20')
     
     req = urllib.request.Request(query)
@@ -216,15 +100,8 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
     else:
         print('Temporary CSV file: ', fp.name)
 
-    # 
-    # 
-    # header = the_page.split('\n')[0]
-    # cols = header.split(',')  
-    #tab = Table.read(the_page.split('\n'), format='csv')
-        
-    # Sort by observation ID
-    
-    tab.sort(sort)
+    # Sort
+    tab.sort(sort_column)
     
     # Add coordinate name
     if 'RA' in tab.colnames:
