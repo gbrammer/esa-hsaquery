@@ -33,17 +33,7 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
     
     """
     import tempfile
-    
-    if False:
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from hsaquery import query
-
-        # Query around GN-z11 program
-        table = query.run_query(box=None, proposid=[13871], instruments=['WFC3', 'ACS'], filters=['F140W','G141'])
-        table['orientat'] = [query.get_orientat(p) 
-                                for p in table['footprint']]
-    
+        
     BASE_URL = 'http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?ARTIFACT_ID=' #J6FL25S4Q_RAW'
         
     if level is None:
