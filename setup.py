@@ -8,17 +8,6 @@ import subprocess
 import os
 import numpy
 
-try:
-    from Cython.Build import cythonize
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
-
-if USE_CYTHON:
-    cext = '.pyx'
-else:
-    cext = '.c'
-
 #update version
 args = 'git describe --tags'
 p = subprocess.Popen(args.split(), stdout=subprocess.PIPE)
@@ -55,7 +44,6 @@ setup(
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
-    ext_modules = None,
     package_data={'hsaquery': []},
     # scripts=['grizli/scripts/flt_info.sh'],
 )

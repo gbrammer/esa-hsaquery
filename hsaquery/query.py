@@ -34,16 +34,18 @@ ARTIFACT.FILE_EXTENSION
 """
 
 DEFAULT_RENAME = {'OPTICAL_ELEMENT_NAME':'FILTER', 'EXPOSURE_DURATION':'EXPTIME', 'INSTRUMENT_NAME':'INSTRUMENT', 'DETECTOR_NAME':'DETECTOR', 'STC_S':'FOOTPRINT', 'SPATIAL_RESOLUTION':'PIXSCALE', 'TARGET_NAME':'TARGET', 'SET_ID':'VISIT'}
-                
-def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW'], extra=["OBSERVATION.INTENT LIKE 'Science'"],  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True):
+
+def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW','C1M'], extra=["OBSERVATION.INTENT LIKE 'Science'"],  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True):
     """
     
     Optional position box query:
         box = [ra, dec, radius] with ra and dec in decimal degrees and radius
         in arcminutes.
     
-    box=None; proposid=[13871]; instruments=['WFC3']; filters=[]; extensions=['RAW']; extra=[];  fields='OBSERVATION,TARGET,POSITION.RA,POSITION.DEC,POSITION.ECL_LAT,POSITION.ECL_LON,POSITION.GAL_LAT,POSITION.GAL_LON,POSITION.STS_S,POSITION.FOV_SIZE,INSTRUMENT.INSTRUMENT_NAME,OPTICAL_ELEMENT.OPTICAL_ELEMENT_NAME,PROPOSAL.PROPOSAL_ID,PROPOSAL.SCIENCE_CATEGORY,PROPOSAL.PI_NAME,ARTIFACT.FILE_NAME'; maxitems=1000
-     
+    Some science observations are flagged as INTENT = Calibration, so may have
+    to run with extra=[] for those cases and strip out true calibs another
+    way.
+    
     """
     import os
     import tempfile   
@@ -118,8 +120,23 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
             
     #tab['OBSERVATION_ID','orientat'][so].show_in_browser(jsviewer=True)
     
+    set_default_formats(tab)
+    
     return tab
 
+def add_postcard(table, resolution=256):
+    
+   url = ['http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?OBSERVATION_ID={0}&RETRIEVAL_TYPE=POSTCARD&RESOLUTION={1}'.format(o, resolution) for o in table['observation_id']]
+   
+   img = ['<a href="{0}"><img src="{0}"></a>'.format(u) for u in url]
+   table['postcard'] = img
+   
+   return True
+   
+   if False:
+       tab = grizli.utils.GTable(table)
+       tab['observation_id','filter','orientat','postcard'][tab['visit'] == 1].write_sortable_html('tab.html', replace_braces=True, localhost=True, max_lines=10000, table_id=None, table_class='display compact', css=None)
+   
 def radec_to_targname(ra=0, dec=0, scl=10000):
     """Turn decimal degree coordinates into a string
     
@@ -165,12 +182,54 @@ def parse_polygons(polystr):
         
     poly = [np.cast[float](p.split()).reshape((-1,2)) for p in spl]
     return poly
+
+#
+DEFAULT_COLUMN_FORMAT = {'start_time_mjd':'.4f',
+           'end_time_mjd':'.4f',
+           'exptime':'.0f',
+           'ra':'.6f',
+           'dec':'.6f',
+           'ecl_lat':'.6f',
+           'ecl_lon':'.6f',
+           'gal_lat':'.6f',
+           'gal_lon':'.6f',
+           'fov_size':'.3f',
+           'pixscale':'.3f'}
+           
+def set_default_formats(table, formats=DEFAULT_COLUMN_FORMAT):
+    """
+    Set default print formats
+    """
+    DEFAULT_FORMATS = {'start_time_mjd':'.4f',
+               'end_time_mjd':'.4f',
+               'exptime':'.0f',
+               'ra':'.6f',
+               'dec':'.6f',
+               'ecl_lat':'.6f',
+               'ecl_lon':'.6f',
+               'gal_lat':'.6f',
+               'gal_lon':'.6f',
+               'fov_size':'.3f',
+               'pixscale':'.3f'}
+    
+    for f in formats:
+        if f in table.colnames:
+            table[f].format = formats[f]
+            
+def set_orientat_column(table):
+    """
+    Make a column in the `table` computing each orientation with
+    `get_orientat`.
+    """
+    table['orientat'] = [query.get_orientat(p) for p in table['footprint']]
+    table['orientat'].format = '.1f'
     
 def get_orientat(polystr='Polygon ICRS 127.465487 18.855605 127.425760 18.853486 127.423118 18.887458 127.463833 18.889591'):
     """
     
     Compute the "ORIENTAT" position angle (PA of the detector +y axis) from an 
-    ESA archive polygon
+    ESA archive polygon, assuming that the first two entries of the polygon 
+    are the LL and UL corners of the detector.
     
     """
     from astropy.coordinates import Angle
@@ -189,19 +248,21 @@ def get_orientat(polystr='Polygon ICRS 127.465487 18.855605 127.425760 18.853486
     return orientat
     
 def show_footprints(tab, ax=None):
+    """
+    Show pointing footprints in a plot
+    """
     import matplotlib.pyplot as plt
     
     # Show polygons
     mpl_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     filters = np.unique(tab['filter'])
-    #print(filters)
+
     colors = {}
     
     if ax is None:
         ax = plt
         
     for i, f in enumerate(filters):
-        #print(f)
         if f in MASTER_COLORS:
             colors[f] = MASTER_COLORS[f]
         else:
@@ -209,16 +270,14 @@ def show_footprints(tab, ax=None):
         
     for i in range(len(tab)):
         poly = parse_polygons(tab['footprint'][i])#[0]
-        #print('x',poly, tab['footprint'][i])
+
         for p in poly:
-            #print(p, p.shape)
-            pclose = np.vstack([p, p[0,:]])
-            #print(pclose)
+            pclose = np.vstack([p, p[0,:]]) # repeat the first vertex to close
+            
             ax.plot(pclose[:,0], pclose[:,1], alpha=0.1, color=colors[tab['filter'][i]])
+            
+            # Plot a point at the first vertex, pixel x=y=0.
             ax.scatter(pclose[0,0], pclose[0,1], marker='.', color=colors[tab['filter'][i]], alpha=0.1)
     
-    #plt.plot(p[0::2], p[1::2], alpha=0.5, color='r')
-    #plt.scatter(p[0], p[1], marker='o', color='r')
-    
-    # orientat = PA y, first two elements of polygon are (y @ x=0)
+
 
