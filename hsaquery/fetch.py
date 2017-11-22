@@ -2,7 +2,12 @@
 Fetch data directly from ESA Hubble Science Archive
 """
 
-def make_curl_script(table, level=None, script_name=None):
+DEFAULT_PRODUCTS = {'WFC3/IR':['RAW'],
+                    'WFPC2/WFPC2':['C0M','C1M'],
+                    'ACS/WFC':['FLC'],
+                    'WFC3/UVIS':['FLC']}
+                    
+def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS):
     """
     Generate a "curl" script to fetch products from the ESA HSA
     
@@ -46,12 +51,11 @@ def make_curl_script(table, level=None, script_name=None):
         curl_list = []
         for i in range(len(table)):
             inst_det = '{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
-            if inst_det == 'WFC3/IR':
-                products = ['RAW']
-            elif inst_det.startswith('WFPC2'):
-                products = ['C0M','C1M']
+            
+            if inst_det in inst_products:
+                products = inst_products[inst_det]
             else:
-                products = ['FLC']
+                products = ['RAW']
         
             o = table['observation_id'][i]
             for product in products:
