@@ -7,7 +7,7 @@ DEFAULT_PRODUCTS = {'WFC3/IR':['RAW'],
                     'ACS/WFC':['FLC'],
                     'WFC3/UVIS':['FLC']}
                     
-def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS):
+def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS, skip_existing=True, output_path='./'):
     """
     Generate a "curl" script to fetch products from the ESA HSA
     
@@ -33,7 +33,9 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
     
     """
     import tempfile
-        
+    import glob
+    import os
+    
     BASE_URL = 'http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?ARTIFACT_ID=' #J6FL25S4Q_RAW'
         
     if level is None:
@@ -49,7 +51,17 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
         
             o = table['observation_id'][i]
             for product in products:
-                curl_list.append('curl {0}{1}_{2} -o {3}_{4}.fits.gz'.format(BASE_URL, o, product, o.lower(), product.lower()))
+                if skip_existing:
+                    path = '{2}/{0}_{1}.fits*'.format(o.lower(), product.lower(), output_path)
+                    if len(glob.glob(path)) > 0:
+                        skip = True
+                    else:
+                        skip = False
+                else:
+                    skip = False
+                    
+                if not skip:
+                    curl_list.append('curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, o, product, o.lower(), product.lower(), output_path))
             
     else:
         curl_list = ['curl {0}{1}_{2} -o {3}_{4}.fits.gz'.format(BASE_URL, o, level, o.lower(), level.lower()) for o in table['observation_id']]
@@ -60,5 +72,26 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
         fp.close()
     
     return curl_list
+
+def persistence_products(tab):
+    import numpy as np
+    wfc3 =  tab['instdet'] == 'WFC3/IR'
+    progs = np.unique(tab[wfc3]['proposal_id'])
+    persist_files = []
+    for prog in progs:
+        p = wfc3 & (tab['proposal_id'] == prog)
+        visits = np.unique(tab['visit'][p])
+        print(visits)
+        for visit in visits:
+            if isinstance(visit, str):
+                vst = visit
+            else:
+                vst = '{0:02d}'.format(visit)
         
+            file_i = 'https://archive.stsci.edu/pub/wfc3_persist/{0}/Visit{1}/{0}.Visit{1}.tar.gz'.format(prog, vst)
+            persist_files.append(file_i)
+
+    return persist_files
+    
+    
     

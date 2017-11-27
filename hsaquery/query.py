@@ -35,7 +35,25 @@ ARTIFACT.FILE_EXTENSION
 
 DEFAULT_RENAME = {'OPTICAL_ELEMENT_NAME':'FILTER', 'EXPOSURE_DURATION':'EXPTIME', 'INSTRUMENT_NAME':'INSTRUMENT', 'DETECTOR_NAME':'DETECTOR', 'STC_S':'FOOTPRINT', 'SPATIAL_RESOLUTION':'PIXSCALE', 'TARGET_NAME':'TARGET', 'SET_ID':'VISIT'}
 
-def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW','C1M'], extra=["OBSERVATION.INTENT LIKE 'Science'"],  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True):
+DEFAULT_COLUMN_FORMAT = {'start_time_mjd':'.4f',
+           'end_time_mjd':'.4f',
+           'exptime':'.0f',
+           'ra':'.6f',
+           'dec':'.6f',
+           'ecl_lat':'.6f',
+           'ecl_lon':'.6f',
+           'gal_lat':'.6f',
+           'gal_lon':'.6f',
+           'fov_size':'.3f',
+           'pixscale':'.3f'}
+
+# Don't get calibrations.  Can't use "INTENT LIKE 'SCIENCE'" because some 
+# science observations are flagged as 'Calibration' in the ESA HSA.
+DEFAULT_EXTRA = ["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) 
+                 for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS',
+                               'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM']]
+
+def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], extensions=['RAW','C1M'], extra=DEFAULT_EXTRA,  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True):
     """
     
     Optional position box query:
@@ -117,6 +135,10 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
     if lower:
         for c in tab.colnames:
             tab.rename_column(c, c.lower())
+    
+    cols = tab.colnames
+    if ('instrument' in cols) & ('detector' in cols):
+        tab['instdet'] = ['{0}/{1}'.format(tab['instrument'][i], tab['detector'][i]) for i in range(len(tab))]
             
     #tab['OBSERVATION_ID','orientat'][so].show_in_browser(jsviewer=True)
     
@@ -182,19 +204,6 @@ def parse_polygons(polystr):
         
     poly = [np.cast[float](p.split()).reshape((-1,2)) for p in spl]
     return poly
-
-#
-DEFAULT_COLUMN_FORMAT = {'start_time_mjd':'.4f',
-           'end_time_mjd':'.4f',
-           'exptime':'.0f',
-           'ra':'.6f',
-           'dec':'.6f',
-           'ecl_lat':'.6f',
-           'ecl_lon':'.6f',
-           'gal_lat':'.6f',
-           'gal_lon':'.6f',
-           'fov_size':'.3f',
-           'pixscale':'.3f'}
            
 def set_default_formats(table, formats=DEFAULT_COLUMN_FORMAT):
     """
