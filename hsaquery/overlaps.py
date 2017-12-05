@@ -30,7 +30,7 @@ def test():
     box = [73.5462181, -3.0147200, 3]
     tab = query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['F110W'], extra=[])
     
-def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']):
+def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS'], proposid=[], SKIP=False):
     
     import copy
     import os
@@ -107,7 +107,6 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
     
         print('\n  N_Patch = {0}'.format(len(match_poly)))
     
-    SKIP=True
     # Save figures and tables for the unique positions
     BLUE = '#6699cc'
     
@@ -134,7 +133,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         if (os.path.exists('{0}_footprint.pdf'.format(jname))) & SKIP:
             continue
                             
-        xtab = query.run_query(box=box, proposid=[], instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS', 'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM']])
+        xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS', 'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM']])
                             
         # Only include ancillary data that directly overlaps with the primary
         # polygon
