@@ -69,6 +69,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
     import tempfile   
     import urllib.request
     from astropy.table import Table
+    from . import utils
     
     qlist = []
     
@@ -125,7 +126,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3'], filters=[], exte
     
     # Add coordinate name
     if 'RA' in tab.colnames:
-        jtargname = [radec_to_targname(ra=tab['RA'][i], dec=tab['DEC'][i], scl=6) for i in range(len(tab))]
+        jtargname = [utils.radec_to_targname(ra=tab['RA'][i], dec=tab['DEC'][i], scl=6) for i in range(len(tab))]
         tab['JTARGNAME'] = jtargname
         
     for c in rename_columns:
@@ -158,43 +159,6 @@ def add_postcard(table, resolution=256):
    if False:
        tab = grizli.utils.GTable(table)
        tab['observation_id','filter','orientat','postcard'][tab['visit'] == 1].write_sortable_html('tab.html', replace_braces=True, localhost=True, max_lines=10000, table_id=None, table_class='display compact', css=None)
-   
-def radec_to_targname(ra=0, dec=0, scl=10000):
-    """Turn decimal degree coordinates into a string
-    
-    Example:
-
-        >>> from grizli.utils import radec_to_targname
-        >>> print(radec_to_targname(ra=10., dec=-10.))
-        j004000-100000
-    
-    Parameters
-    -----------
-    ra, dec : float
-        Sky coordinates in decimal degrees
-    
-    Returns
-    --------
-    targname : str
-        Target name like jHHMMSS[+-]DDMMSS.
-    
-    """
-    import astropy.coordinates 
-    import astropy.units as u
-    import re
-    import numpy as np
-    
-    dec_scl = int(np.round(dec*scl))/scl
-    cosd = np.cos(dec_scl/180*np.pi)
-    ra_scl = int(np.round(ra*scl/cosd))/(scl/cosd)
-    
-    coo = astropy.coordinates.SkyCoord(ra=ra_scl*u.deg, dec=dec_scl*u.deg)
-    
-    cstr = re.split('[hmsd.]', coo.to_string('hmsdms', precision=2))
-    targname = ('j{0}{1}'.format(''.join(cstr[0:3]), ''.join(cstr[4:7])))
-    targname = targname.replace(' ', '')
-    
-    return targname
         
 def parse_polygons(polystr):
     if 'UNION' in polystr.upper():
@@ -288,5 +252,6 @@ def show_footprints(tab, ax=None):
             # Plot a point at the first vertex, pixel x=y=0.
             ax.scatter(pclose[0,0], pclose[0,1], marker='.', color=colors[tab['filter'][i]], alpha=0.1)
     
-
+    return colors
+    
 

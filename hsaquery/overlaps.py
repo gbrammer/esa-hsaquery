@@ -41,9 +41,9 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
     from shapely.geometry import Polygon
     from descartes import PolygonPatch
     
-    from hsaquery import query
+    from hsaquery import query, utils
     from hsaquery.query import parse_polygons
-    
+        
     # Get shapely polygons for each exposures
     polygons = []
     
@@ -63,7 +63,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
     
     # Loop through polygons and combine those that overlap
     for i in range(1,len(tab)):
-        print(i)
+        print('Parse', i)
         has_match = False
         for j in range(len(match_poly)):
             isect = match_poly[j].intersection(polygons[i])
@@ -89,7 +89,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         match_ids = [mids[0]]
     
         for i in range(1,len(mpolygons)):
-            print(i)
+            #print(i)
             has_match = False
             for j in range(len(match_poly)):
                 isect = match_poly[j].intersection(mpolygons[i])
@@ -104,11 +104,15 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
             if not has_match:
                 match_poly.append(mpolygons[i])
                 match_ids.append(mids[i])
-    
-        print('\n  N_Patch = {0}'.format(len(match_poly)))
-    
+        
+        print('Iter #{0}, N_Patch = {1}'.format(iter+1, len(match_poly)))
+        if len(mpolygons) == len(match_poly):
+            break
+            
     # Save figures and tables for the unique positions
     BLUE = '#6699cc'
+    
+    tables = []
     
     for i in range(len(match_poly)):
         #i+=1
@@ -127,14 +131,20 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         box = [ra, dec, np.maximum(xradius*1.5, yradius*1.5)]
         
         # Build target name from RA/Dec
-        jname = query.radec_to_targname(box[0], box[1], scl=1000)
+        jname = utils.radec_to_targname(box[0], box[1], scl=1000)
         print('\n\n', i, jname, box[0], box[1])
 
         if (os.path.exists('{0}_footprint.pdf'.format(jname))) & SKIP:
             continue
                             
         xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS', 'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM']])
-                            
+        
+        ebv = utils.get_irsa_dust(ra, dec, type='SandF')
+        xtab.meta['NAME'] = jname
+        xtab.meta['RA'] = ra
+        xtab.meta['DEC'] = dec
+        xtab.meta['MW_EBV'] = ebv
+              
         # Only include ancillary data that directly overlaps with the primary
         # polygon
         pointing_overlaps = np.zeros(len(xtab), dtype=bool)
@@ -151,34 +161,17 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         
         # Unique targets
         filter_target = np.array(['{0} {1}'.format(xtab['instdet'][i], xtab['filter'][i]) for i in range(pointing_overlaps.sum())])
-        
-        fp = open('{0}_info.dat'.format(jname),'w')
-        
-        for t in np.unique(xtab['proposal_id']):
-            fp.write('proposal_id {0} {1}\n'.format(jname, t))
-        
-        for t in np.unique(xtab['target']):
-            fp.write('target {0} {1}\n'.format(jname, t))
-            
-        print(np.unique(xtab['target']), '\n')
-        
-        for filt in np.unique(filter_target):
-            mf = filter_target == filt
-            print('filter {0}  {1:20s}  {2:3d}  {3:>8.1f}'.format(jname, filt, mf.sum(), xtab['exptime'][mf].sum()))
-            fp.write('filter {0}  {1:20s}  {2:3d}  {3:>8.1f}\n'.format(jname, filt, mf.sum(), xtab['exptime'][mf].sum()))
-        
-        fp.close()
-        
+                        
         ########### 
         # Make the figure
         fig = plt.figure()
         ax = fig.add_subplot(111)
         
         # Show the parent table
-        query.show_footprints(tab[idx], ax=ax)
+        colors = query.show_footprints(tab[idx], ax=ax)
         ax.scatter(box[0], box[1], marker='+', color='k')
         
-        query.show_footprints(xtab, ax=ax)
+        colors = query.show_footprints(xtab, ax=ax)
         
         patch1 = PolygonPatch(p, fc=BLUE, ec=BLUE, alpha=0.1, zorder=2)
         
@@ -194,6 +187,33 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         ax.set_title(jname)
         ax.set_xlim(ax.get_xlim()[::-1])
         fig.set_size_inches(5,5*dy/dx)
+        
+        # Add summary
+        fp = open('{0}_info.dat'.format(jname),'w')
+        dyi = 0.02*dy/dx
+        
+        ax.text(0.05, 0.97, '{0:>13.5f} {1:>13.5f}  E(B-V)={2:.3f}'.format(ra, dec, ebv), ha='left', va='top', transform=ax.transAxes, fontsize=6)
+        
+        for i, t in enumerate(np.unique(xtab['proposal_id'])):
+            fp.write('proposal_id {0} {1}\n'.format(jname, t))
+            ts = np.unique(xtab['target'][xtab['proposal_id'] == t])
+            ax.text(0.05, 0.97-dyi*(i+1), '{0} {1}'.format(t, ' '.join([ti for ti in ts])), ha='left', va='top', transform=ax.transAxes, fontsize=6)
+            
+        for i, t in enumerate(np.unique(xtab['target'])):
+            fp.write('target {0} {1}\n'.format(jname, t))
+            
+        print(np.unique(xtab['target']), '\n')
+        
+        for i, filt in enumerate(np.unique(filter_target)):
+            mf = filter_target == filt
+            print('filter {0}  {1:>20s}  {2:>3d}  {3:>8.1f}'.format(jname, filt, mf.sum(), xtab['exptime'][mf].sum()))
+            fp.write('filter {0}  {1:>20s}  {2:>3d}  {3:>8.1f}\n'.format(jname, filt, mf.sum(), xtab['exptime'][mf].sum()))
+            
+            c = colors[filt.split()[1]]
+            ax.text(0.95, 0.97-dyi*i, '{1:>20s}  {2:>3d}  {3:>8.1f}\n'.format(jname, filt, mf.sum(), xtab['exptime'][mf].sum()), ha='right', va='top', transform=ax.transAxes, fontsize=6, color=c)
+            
+        fp.close()
+                
         fig.tight_layout(pad=0.5)
         
         # Save figure and table
@@ -203,4 +223,8 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         xtab.write('{0}_footprint.fits'.format(jname), format='fits', overwrite=True)
         np.save('{0}_footprint.npy'.format(jname), [p, box])
         
+        tables.append(xtab)
+    
+    return tables
+    
     
