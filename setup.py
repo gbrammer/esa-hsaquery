@@ -29,21 +29,18 @@ def read(fname):
 
 setup(
     name = "hsaquery",
-    version = "0.0.1",
+    version = "0.1.0",
     author = "Gabriel Brammer",
     author_email = "gbrammer@gmail.com",
     description = "Python tools for querying the ESA Hubble Science Archive",
     license = "MIT",
     url = "https://github.com/gbrammer/esa-hsaquery",
-    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/0.0.1",
+    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/0.1.0",
     packages=['hsaquery'],
-    # requires=['numpy', 'scipy', 'astropy', 'drizzlepac', 'stwcs'],
-    # long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 1 - Planning",
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
     package_data={'hsaquery': []},
-    # scripts=['grizli/scripts/flt_info.sh'],
 )
