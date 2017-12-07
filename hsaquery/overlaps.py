@@ -1,6 +1,14 @@
 """
 Scripts to find overlapping HST data
 """
+
+try:
+    from . import query, utils
+    from .query import parse_polygons
+except:
+    from hsaquery import query, utils
+    from hsaquery.query import parse_polygons
+    
 def test():
     
     import copy
@@ -30,7 +38,7 @@ def test():
     box = [73.5462181, -3.0147200, 3]
     tab = query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['F110W'], extra=[])
     
-def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS'], proposid=[], SKIP=False):
+def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True):
     
     import copy
     import os
@@ -40,9 +48,6 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
 
     from shapely.geometry import Polygon
     from descartes import PolygonPatch
-    
-    from hsaquery import query, utils
-    from hsaquery.query import parse_polygons
         
     # Get shapely polygons for each exposures
     polygons = []
@@ -137,7 +142,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         if (os.path.exists('{0}_footprint.pdf'.format(jname))) & SKIP:
             continue
                             
-        xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS', 'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM']])
+        xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=extra)
         
         ebv = utils.get_irsa_dust(ra, dec, type='SandF')
         xtab.meta['NAME'] = jname
@@ -190,14 +195,14 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         
         # Add summary
         fp = open('{0}_info.dat'.format(jname),'w')
-        dyi = 0.02*dy/dx
+        dyi = 0.02*dx/dy
         
         ax.text(0.05, 0.97, '{0:>13.5f} {1:>13.5f}  E(B-V)={2:.3f}'.format(ra, dec, ebv), ha='left', va='top', transform=ax.transAxes, fontsize=6)
         
         for i, t in enumerate(np.unique(xtab['proposal_id'])):
             fp.write('proposal_id {0} {1}\n'.format(jname, t))
             ts = np.unique(xtab['target'][xtab['proposal_id'] == t])
-            ax.text(0.05, 0.97-dyi*(i+1), '{0} {1}'.format(t, ' '.join([ti for ti in ts])), ha='left', va='top', transform=ax.transAxes, fontsize=6)
+            ax.text(0.05, 0.97-dyi*(i+1), '{0} {1}'.format(t, ' '.join(['{0}'.format(ti) for ti in ts])), ha='left', va='top', transform=ax.transAxes, fontsize=6)
             
         for i, t in enumerate(np.unique(xtab['target'])):
             fp.write('target {0} {1}\n'.format(jname, t))
@@ -218,7 +223,9 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         
         # Save figure and table
         fig.savefig('{0}_footprint.pdf'.format(jname))
-        plt.close()
+        
+        if close:
+            plt.close()
 
         xtab.write('{0}_footprint.fits'.format(jname), format='fits', overwrite=True)
         np.save('{0}_footprint.npy'.format(jname), [p, box])
