@@ -202,7 +202,13 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         for i, t in enumerate(np.unique(xtab['proposal_id'])):
             fp.write('proposal_id {0} {1}\n'.format(jname, t))
             ts = np.unique(xtab['target'][xtab['proposal_id'] == t])
-            ax.text(0.05, 0.97-dyi*(i+1), '{0} {1}'.format(t, ' '.join(['{0}'.format(ti) for ti in ts])), ha='left', va='top', transform=ax.transAxes, fontsize=6)
+            
+            if len(ts) > 4:
+                tstr = '{0} {1}'.format(t, ' '.join(['{0}'.format(ti) for ti in ts[:4]])) + ' ...'
+            else:
+                tstr = '{0} {1}'.format(t, ' '.join(['{0}'.format(ti) for ti in ts]))
+                
+            ax.text(0.05, 0.97-dyi*(i+1), tstr, ha='left', va='top', transform=ax.transAxes, fontsize=6)
             
         for i, t in enumerate(np.unique(xtab['target'])):
             fp.write('target {0} {1}\n'.format(jname, t))
