@@ -2,13 +2,8 @@
 Scripts to find overlapping HST data
 """
 
-try:
-    from . import query, utils
-    from .query import parse_polygons
-except:
-    from hsaquery import query, utils
-    from hsaquery.query import parse_polygons
-    
+from . import query, utils
+  
 def test():
     
     import copy
@@ -39,7 +34,43 @@ def test():
     tab = query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['F110W'], extra=[])
     
 def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True):
+    """
+    Compute discrete groups from the parent table and find overlapping
+    datasets.
     
+    Parameters
+    ----------
+    tab : `~astropy.table.Table`
+        Parent table from which to compute the groups.
+        
+    buffer_arcmin : float
+        Buffer, in arcminutes, to add around the parent group polygons
+        
+    filters : list
+        List of filters to query.  If empty then return all.
+        
+    instruments : list
+        List of instruments to query.  If empty then return all.
+    
+    proposid : list
+        List of proposal IDs to query.  If empty then return all.
+    
+    SKIP : bool
+        Don't recompute if a table with the same rootname already exists.
+        
+    extra : list
+        Extra query parameters.
+        
+    close : bool
+        If true, close the figure objects.
+    
+    Returns
+    -------
+    tables : list
+        
+        List of grouped tables (`~astropy.table.Table`).
+
+    """
     import copy
     import os
     
@@ -56,7 +87,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
     #poly_buffer = 0.5/60 # ~1 arcmin, but doesn't account for cos(dec)
     
     for i in range(len(tab)):
-        poly = parse_polygons(tab['footprint'][i])#[0]
+        poly = query.parse_polygons(tab['footprint'][i])#[0]
         pshape = [Polygon(p) for p in poly]
         for i in range(1,len(poly)):
             pshape[0] = pshape[0].union(pshape[i])
@@ -154,7 +185,7 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         # polygon
         pointing_overlaps = np.zeros(len(xtab), dtype=bool)
         for j in range(len(xtab)):
-            poly = parse_polygons(xtab['footprint'][j])#[0]
+            poly = query.parse_polygons(xtab['footprint'][j])#[0]
             pshape = [Polygon(pi) for pi in poly]
             for k in range(1,len(poly)):
                 pshape[0] = pshape[0].union(pshape[k])
@@ -239,5 +270,148 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         tables.append(xtab)
     
     return tables
+    
+def summary_table(tabs=None, output='overlap_summary'):
+    import glob
+    from astropy.table import Table
+    try:
+        from grizli import utils
+        HAS_GRIZLI = True
+    except:
+        HAS_GRIZLI = False
+        
+    if tabs is None:
+        tabs = [Table.read(file) for file in glob.glob('*footprint.fits')]
+
+    names, props = parse_overlap_table(tabs[0])
+    props = []
+    for i in range(len(tabs)):
+        print(i)
+        props.append(parse_overlap_table(tabs[i])[1])
+    
+    mtab = Table(rows=props, names=names)
+    mtab['RA'].format = '.5f'
+    mtab['DEC'].format = '.5f'
+    mtab.rename_column('MW_EBV', 'E(B-V)')
+
+    mtab['EclLat'].format = '.1f'
+    mtab['EclLon'].format = '.1f'
+    
+    mtab['GalLat'].format = '.1f'
+    mtab['GalLon'].format = '.1f'
+    
+    mtab['AreaG102'].format = '.1f'
+    mtab['AreaG141'].format = '.1f'
+    
+    mtab['TexpG102'].format = '.1f'
+    mtab['TexpG141'].format = '.1f'
+    
+    mtab['TperG102'].format = '.1f'
+    mtab['TperG141'].format = '.1f'
+    
+    # Links
+    mast_link = ['<a href=https://archive.stsci.edu/hst/search.php?RA={0}&DEC={1}&radius=3.&max_records=5000&sci_aec=S&action=Search>MAST</a>'.format(t['RA'], t['DEC']) for t in mtab]
+    mtab['MAST'] = mast_link
+    
+    fp_link = ['<a href={0}_footprint.pdf>Footprint</a>'.format(t['NAME']) for t in mtab]
+    mtab['Footprint'] = fp_link
+    
+    mtab.write('{0}.fits'.format(output), overwrite=True)
+    
+    if HAS_GRIZLI:
+        gtab = utils.GTable(mtab)
+        gtab.write_sortable_html('{0}.html'.format(output),
+                     replace_braces=True, localhost=False, 
+                     max_lines=len(mtab)+10, table_id=None, 
+                     table_class='display compact', css=None)
+                     
+def parse_overlap_table(tab):
+    """
+    Compute properties of the overlap table
+    
+    Parameters
+    ----------
+    tab : `~astropy.table.Table`
+        Overlap table output from `find_overlaps`.
+        
+    Returns
+    -------
+    names : list
+        If `get_colnames==True`, then also return a list of the parameter
+        names.
+
+    properties : list
+        List of extracted properties.
+        
+    """
+    import numpy as np
+    from shapely.geometry import Polygon
+    
+    # Meta attributes
+    names, properties = [], []
+    for k in tab.meta:
+        names.append(k)
+        properties.append(tab.meta[k])
+    
+    # Ecliptic and Galactic coords
+    names.extend(['EclLat','EclLon','GalLat','GalLon'])
+    properties.append(np.mean(tab['ecl_lat']))
+    properties.append(np.mean(tab['ecl_lon']))
+    properties.append(np.mean(tab['gal_lat']))
+    properties.append(np.mean(tab['gal_lon']))
+    
+    # Unique elements of the table
+    names.append('NFILT')
+    properties.append(len(np.unique(tab['filter'])))
+    for c in ['filter', 'target', 'target_description', 'proposal_id']:
+        names.append(c)
+        properties.append(' '.join(['{0}'.format(p) for p in np.unique(tab[c])]))
+        if c in ['target_description']:
+            properties[-1] = properties[-1].title().replace(';','\n')
+            
+    for c in ['pi_name']:
+        names.append(c)
+        properties.append(' '.join(['{0}'.format(p.split()[0].title()) for p in np.unique(tab[c])]))
+    
+    # By grism
+    for g in ['G102', 'G141']:
+        m = tab['filter'] == g
+        names.extend(['{0}{1}'.format(p, g) for p in ['N', 'Area', 'Texp', 'Tper', 'PA']])
+        if m.sum() == 0:
+            properties.extend([0,0,0,0,0])
+            continue
+        
+        # N
+        properties.append(m.sum())
+        
+        # Area
+        PAs = []
+        for i, polystr in enumerate(tab['footprint'][m]):
+            poly = query.parse_polygons(polystr)
+            PAs.append(int(np.round(query.get_orientat(polystr))))
+            pshape = [Polygon(p) for p in poly]
+            for j in range(1,len(poly)):
+                pshape[0] = pshape[0].union(pshape[j])
+            
+            if i == 0:
+                gpoly = pshape[0]
+            else:
+                gpoly = gpoly.union(pshape[0])
+        
+        cosd = np.cos(tab.meta['DEC']/180*np.pi)
+        area = gpoly.area*3600.*cosd
+        properties.append(area)
+        
+        # Texp
+        texp = np.sum(tab['exptime'][m])
+        properties.append(texp)
+        
+        # Tper
+        properties.append(texp/3000./(area/4.4))
+        
+        # Number of PAs
+        properties.append(len(np.unique(PAs)))
+
+    return names, properties
     
     
