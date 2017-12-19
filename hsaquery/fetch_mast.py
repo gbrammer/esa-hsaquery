@@ -8,6 +8,7 @@ import os
 import time
 import re
 import json
+import shutil
 
 try: # Python 3.x
     from urllib.parse import quote as urlencode
@@ -72,7 +73,23 @@ try:
 except:
     from hsaquery.fetch import DEFAULT_PRODUCTS
     
-def get_from_MAST(table, inst_products=DEFAULT_PRODUCTS, zipFilename='mastDownload', request_only=False, retrieve=True):
+def directDownload(accessLink, filename, path='./'):
+    """
+    https://mast.stsci.edu/api/v0/pyex.html
+    """
+    
+    server='mast.stsci.edu'
+    conn = httplib.HTTPSConnection(server)
+    conn.request("GET", "/api/v0/download/file/"+accessLink.lstrip('mast:'))
+    resp = conn.getresponse()
+    fileContent = resp.read()
+    
+    with open(os.path.join(path, filename),'wb') as FLE:
+        FLE.write(fileContent)
+    
+    conn.close()
+    
+def get_from_MAST(table, inst_products=DEFAULT_PRODUCTS, zipFilename='mastDownload', request_only=False, retrieve=True, direct=False, path='./', skip_existing=True):
     """
     testing
     """
@@ -106,7 +123,19 @@ def get_from_MAST(table, inst_products=DEFAULT_PRODUCTS, zipFilename='mastDownlo
             URLs.append( 'mast:HST/product/{0}/{0}_{1}.fits'.format(obs.lower(), p.lower()))
             
             productTypes.append('image')
-            outPaths.append( 'MAST/{0}_{1}.fits'.format(obs.lower(), p.lower()))
+            outPaths.append( '{0}/{1}_{2}.fits'.format(path, obs.lower(), p.lower()))
+     
+    if direct:
+        filenames = [os.path.basename(file) for file in outPaths]
+        il = range(len(filenames))
+        for i, accessLink, filename in zip(il, URLs, filenames):
+            print('({0:>3d}/{1:>3d}): {2}'.format(i+1, il[-1]+1, os.path.join(path, filename)))
+            if os.path.exists(os.path.join(path, filename)) & skip_existing:
+                continue
+                
+            directDownload(accessLink, filename, path=path)
+        
+        return True
         
     #zipFilename = "mastDownload"
     extension = "tar.gz"
@@ -130,9 +159,9 @@ def get_from_MAST(table, inst_products=DEFAULT_PRODUCTS, zipFilename='mastDownlo
     
     if retrieve:
         # Fetch it
-        print('Retrieve {0}'.format(bundleInfo['url'])
+        print('Retrieve {0}'.format(bundleInfo['url']))
         urlretrieve(bundleInfo['url'], zipFilename+"."+extension)
-    else:
-        print(bundleInfo['url'])
-        return(bundleInfo)
+    
+    print(bundleInfo['url'])
+    return(bundleInfo)
         
