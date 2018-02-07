@@ -29,13 +29,13 @@ def read(fname):
 
 setup(
     name = "hsaquery",
-    version = "0.1.2",
+    version = "0.1.3",
     author = "Gabriel Brammer",
     author_email = "gbrammer@gmail.com",
     description = "Python tools for querying the ESA Hubble Science Archive",
     license = "MIT",
     url = "https://github.com/gbrammer/esa-hsaquery",
-    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/0.1.2",
+    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/0.1.3",
     packages=['hsaquery'],
     classifiers=[
         "Development Status :: 1 - Planning",
