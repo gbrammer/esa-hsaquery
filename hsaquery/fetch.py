@@ -7,7 +7,7 @@ DEFAULT_PRODUCTS = {'WFC3/IR':['RAW'],
                     'ACS/WFC':['FLC'],
                     'WFC3/UVIS':['FLC']}
                     
-def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS, skip_existing=True, output_path='./'):
+def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS, skip_existing=True, s3_sync=False, output_path='./'):
     """
     Generate a "curl" script to fetch products from the ESA HSA
     
@@ -37,6 +37,10 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
     import os
     
     BASE_URL = 'http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?ARTIFACT_ID=' #J6FL25S4Q_RAW'
+    
+    if s3_sync:
+        # s3://stpubdata/hst/public/icwb/icwb1iu5q/icwb1iu5q_raw.fits    
+        BASE_URL = 's3://stpubdata/hst/public/'
         
     if level is None:
         # Get RAW for WFC3/IR, FLC for UVIS and ACS
@@ -49,10 +53,10 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
             else:
                 products = ['RAW']
         
-            o = table['observation_id'][i]
+            dataset = table['observation_id'][i]
             for product in products:
                 if skip_existing:
-                    path = '{2}/{0}_{1}.fits*'.format(o.lower(), product.lower(), output_path)
+                    path = '{2}/{0}_{1}.fits*'.format(dataset.lower(), product.lower(), output_path)
                     if len(glob.glob(path)) > 0:
                         skip = True
                     else:
@@ -61,10 +65,17 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
                     skip = False
                     
                 if not skip:
-                    curl_list.append('curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, o, product, o.lower(), product.lower(), output_path))
+                    if s3_sync:
+                        curl_list.append(make_s3_command(dataset, product, output_path=output_path, s3_sync=s3_sync))                            
+                    else:
+                        curl_list.append('curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, dataset, product, dataset.lower(), product.lower(), output_path))
             
     else:
-        curl_list = ['curl {0}{1}_{2} -o {3}_{4}.fits.gz'.format(BASE_URL, o, level, o.lower(), level.lower()) for o in table['observation_id']]
+        if s3_sync:
+            curl_list = [make_s3_command(dataset, product, output_path=output_path, s3_sync=s3_sync) for dataset in table['observation_id']]
+                
+        else:
+            curl_list = ['curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, dataset, level, dataset.lower(), level.lower(), output_path) for dataset in table['observation_id']]
     
     if script_name is not None:
         fp = open(script_name, 'w')
@@ -73,6 +84,46 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
     
     return curl_list
 
+def make_s3_command(dataset, product, output_path='./', s3_sync=True):
+    """
+    Generate a path to the public "STPUBDATA" S3 Hubble data mirror
+    
+    Parameters
+    ----------
+    dataset : str
+        Dataset name, like 'IDNCM1AGQ' (or 'idncm1agq').
+        
+    product : type
+        File extension, like 'RAW' (or 'raw').
+        
+    output_path : type
+        Path where to put the file
+        
+    s3_sync : str, bool
+        If 'cp' then run `aws s3 cp`.  If anything else, run `aws s3 sync` 
+        excluding all files but including the desired `product`.
+    
+    Returns
+    -------
+    cmd : str
+        Sync/copy command for s3, e.g., 
+        'aws s3 cp --request-payer requester s3://stpubdata/hst/public/idnc/idncm1agq/idncm1agq_raw.fits ./'.
+        
+    .. warning::
+    
+    Copying from the STPublic S3 bucket outside of AWS can incur significant 
+    charges to an AWS account!
+    
+    """
+    BASE_URL = 's3://stpubdata/hst/public/'
+    
+    if s3_sync == 'cp':
+        cmd = 'aws s3 cp --request-payer requester {0}{1}/{2}/{2}_{3}.fits {4}/'.format(BASE_URL, dataset[:4].lower(), dataset.lower(), product.lower(), output_path)
+    else:
+        cmd = 'aws s3 sync --request-payer requester --exclude="*.*" --include="*{3}.fits" {0}{1}/{2}/ {4}/'.format(BASE_URL, dataset[:4].lower(), dataset.lower(), product.lower(), output_path)
+    
+    return cmd
+    
 def persistence_products(tab):
     import numpy as np
     wfc3 =  tab['instdet'] == 'WFC3/IR'
