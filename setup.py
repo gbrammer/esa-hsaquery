@@ -42,5 +42,14 @@ setup(
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
+    install_requires=[
+         'astropy>=2.0.0',
+         'lxml>=3.8.0',
+         'numpy>=1.10.2',
+         'geos>=0.2.1',
+         'shapely>=1.5.16',
+         'matplotlib>=2.0.2',
+         'descartes>=1.0.2'
+    ],
     package_data={'hsaquery': []},
 )
