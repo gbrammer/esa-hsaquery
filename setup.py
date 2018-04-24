@@ -6,7 +6,6 @@ from setuptools.extension import Extension
 import subprocess
 
 import os
-import numpy
 
 #update version
 args = 'git describe --tags'
