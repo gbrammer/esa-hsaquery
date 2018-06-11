@@ -19,21 +19,21 @@ def test():
 
     
     # Example: high-z cluster pointings
-    tab = query.run_query(box=None, proposid=[14594], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['G102','G141'], extra=[])
+    tab = query.run_query(box=None, proposid=[14594], instruments=['WFC3-IR', 'ACS-WFC'], extensions=['FLT'], filters=['G102','G141'], extra=[])
     
     # Ebeling
-    tab = query.run_query(box=None, proposid=[15132,14098,13671,12884,12166,11103,10875,], instruments=['WFC3'], extensions=['FLT'], filters=[], extra=[])
+    tab = query.run_query(box=None, proposid=[15132,14098,13671,12884,12166,11103,10875,], instruments=['WFC3-IR'], extensions=['FLT'], filters=[], extra=[])
     # Relics
-    tab = query.run_query(box=None, proposid=[14096], instruments=['WFC3'], extensions=['FLT'], filters=[], extra=[])
-    tab = query.run_query(box=None, proposid=[11591], instruments=['WFC3'], extensions=['FLT'], filters=[], extra=[])
-    tab = query.run_query(box=None, proposid=[13666,14148,14496], instruments=['WFC3'], extensions=['FLT'], filters=[], extra=[])
+    tab = query.run_query(box=None, proposid=[14096], instruments=['WFC3-IR'], extensions=['FLT'], filters=[], extra=[])
+    tab = query.run_query(box=None, proposid=[11591], instruments=['WFC3-iR'], extensions=['FLT'], filters=[], extra=[])
+    tab = query.run_query(box=None, proposid=[13666,14148,14496], instruments=['WFC3-IR'], extensions=['FLT'], filters=[], extra=[])
     tab = tab[tab['target'] != 'ANY']
     
     # MACS 0454
     box = [73.5462181, -3.0147200, 3]
-    tab = query.run_query(box=box, proposid=[], instruments=['WFC3', 'ACS'], extensions=['FLT'], filters=['F110W'], extra=[])
+    tab = query.run_query(box=box, proposid=[], instruments=['WFC3-IR', 'ACS-WFC'], extensions=['FLT'], filters=['F110W'], extra=[])
     
-def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True):
+def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WFC3-UVIS', 'ACS-WFC'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True):
     """
     Compute discrete groups from the parent table and find overlapping
     datasets.
