@@ -324,7 +324,9 @@ def summary_table(tabs=None, output='overlap_summary'):
                      replace_braces=True, localhost=False, 
                      max_lines=len(mtab)+10, table_id=None, 
                      table_class='display compact', css=None)
-                     
+    
+    return gtab
+                
 def parse_overlap_table(tab):
     """
     Compute properties of the overlap table
