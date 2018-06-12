@@ -144,6 +144,8 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3', 'ACS']
         print('Iter #{0}, N_Patch = {1}'.format(iter+1, len(match_poly)))
         if len(mpolygons) == len(match_poly):
             break
+    
+    np.save('overlaps.py', [match_poly, match_ids])
             
     # Save figures and tables for the unique positions
     BLUE = '#6699cc'
