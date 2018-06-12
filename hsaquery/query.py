@@ -65,7 +65,7 @@ ARTIFACT.FILE_FORMAT
 #                   'TARGET_NAME':'TARGET', 
 #                   'SET_ID':'VISIT'}
 
-DEFAULT_RENAME = {'EXPOSURE_DURATION':'EXPTIME',
+DEFAULT_RENAME = {'EXPOSURE_DURATION':'VISIT_DURATION',
                   'STC_S':'FOOTPRINT', 
                   'TARGET_NAME':'TARGET', 
                   'SET_ID':'VISIT'}
@@ -169,6 +169,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
     print('xxx', fp.name)
     
     tab = Table.read(vo_tempfile, format='votable')
+    tab.meta['query'] = query, 'Query string'
     
     # Compute file extension
     if 'ARTIFACT_ID' in tab.colnames:
@@ -184,7 +185,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
     if 'INSTRUMENT_CONFIGURATION' in tab.colnames:
         aperture = [str(conf).split('|')[0].split('=')[1] for conf in tab['INSTRUMENT_CONFIGURATION']]
         
-        config = {'APERTURE':[], 'DETECTOR':[], 'OBSMODE':[]}
+        config = {'APERTURE':[], 'DETECTOR':[], 'OBSMODE':[], 'EXPTIME':[]}
         for conf in tab['INSTRUMENT_CONFIGURATION']:
             spl = conf.decode('utf-8').strip().split('|')
             splk = {}
@@ -197,6 +198,8 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
                     config[ck].append(splk[ck])
                 else:
                     config[ck].append('')
+        
+        config['EXPTIME'] = np.cast[float](config['EXPTIME'])
         
         for ck in config:
             tab[ck] = config[ck]
