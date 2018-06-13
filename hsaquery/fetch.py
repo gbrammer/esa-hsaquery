@@ -7,10 +7,10 @@ Fetch data directly from ESA Hubble Science Archive
 #                     'ACS-WFC':['FLC'],
 #                     'WFC3-UVIS':['FLC']}
                     
-DEFAULT_PRODUCTS = {'IR':['RAW'],
-                    1:['C0M','C1M'],
-                    'WFC':['FLC'],
-                    'UVIS':['FLC']}
+DEFAULT_PRODUCTS = {'WFC3-IR':['RAW'],
+                    'WFPC2':['C0M','C1M'],
+                    'ACS-WFC':['FLC'],
+                    'WFC3-UVIS':['FLC']}
                                         
 def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS, skip_existing=True, s3_sync=False, output_path='./'):
     """
@@ -52,7 +52,7 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
         curl_list = []
         for i in range(len(table)):
             #inst_det = '{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
-            inst_det = table['detector'][i] #'{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
+            inst_det = table['instdet'][i] #'{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
             
             if inst_det in inst_products:
                 products = inst_products[inst_det]
