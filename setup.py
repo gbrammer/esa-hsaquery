@@ -23,18 +23,21 @@ print('Git version: {0}'.format(version))
 # Used for the long_description.  It's nice, because now 1) we have a top level
 # README file and 2) it's easier to type in the README file than to put a raw
 # string in below ...
+
+version = "0.1.8"
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
     name = "hsaquery",
-    version = "0.1.7",
+    version = version,
     author = "Gabriel Brammer",
     author_email = "gbrammer@gmail.com",
     description = "Python tools for querying the ESA Hubble Science Archive",
     license = "MIT",
     url = "https://github.com/gbrammer/esa-hsaquery",
-    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/0.1.7",
+    download_url = "https://github.com/gbrammer/esa-hsaquery/tarball/{0}".format(version),
     packages=['hsaquery'],
     classifiers=[
         "Development Status :: 1 - Planning",
