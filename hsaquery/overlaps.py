@@ -366,6 +366,9 @@ def parse_overlap_table(tab):
     names.append('NFILT')
     properties.append(len(np.unique(tab['filter'])))
     for c in ['filter', 'target', 'target_description', 'proposal_id']:
+        if c not in tab.colnames:
+            continue
+        
         names.append(c)
         properties.append(' '.join(['{0}'.format(p) for p in np.unique(tab[c])]))
         if c in ['target_description']:
