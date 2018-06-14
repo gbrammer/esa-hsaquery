@@ -2,11 +2,16 @@
 Fetch data directly from ESA Hubble Science Archive
 """
 
-DEFAULT_PRODUCTS = {'WFC3/IR':['RAW'],
-                    'WFPC2/WFPC2':['C0M','C1M'],
-                    'ACS/WFC':['FLC'],
-                    'WFC3/UVIS':['FLC']}
+# DEFAULT_PRODUCTS = {'WFC3-IR':['RAW'],
+#                     'WFPC2':['C0M','C1M'],
+#                     'ACS-WFC':['FLC'],
+#                     'WFC3-UVIS':['FLC']}
                     
+DEFAULT_PRODUCTS = {'WFC3-IR':['RAW'],
+                    'WFPC2':['C0M','C1M'],
+                    'ACS-WFC':['FLC'],
+                    'WFC3-UVIS':['FLC']}
+                                        
 def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_PRODUCTS, skip_existing=True, s3_sync=False, output_path='./'):
     """
     Generate a "curl" script to fetch products from the ESA HSA
@@ -36,7 +41,7 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
     import glob
     import os
     
-    BASE_URL = 'http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?ARTIFACT_ID=' #J6FL25S4Q_RAW'
+    BASE_URL = 'http://archives.esac.esa.int/ehst-sl-server/servlet/data-action?ARTIFACT_ID=' #J6FL25S4Q_RAW.FITS'
     
     if s3_sync:
         # s3://stpubdata/hst/public/icwb/icwb1iu5q/icwb1iu5q_raw.fits    
@@ -46,7 +51,8 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
         # Get RAW for WFC3/IR, FLC for UVIS and ACS
         curl_list = []
         for i in range(len(table)):
-            inst_det = '{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
+            #inst_det = '{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
+            inst_det = table['instdet'][i] #'{0}/{1}'.format(table['instrument'][i], table['detector'][i]) 
             
             if inst_det in inst_products:
                 products = inst_products[inst_det]
@@ -68,14 +74,14 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
                     if s3_sync:
                         curl_list.append(make_s3_command(dataset, product, output_path=output_path, s3_sync=s3_sync))                            
                     else:
-                        curl_list.append('curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, dataset, product, dataset.lower(), product.lower(), output_path))
+                        curl_list.append('curl {0}{1}_{2}.FITS -o {5}/{3}_{4}.fits'.format(BASE_URL, dataset.upper(), product.upper(), dataset, product, output_path))
             
     else:
         if s3_sync:
             curl_list = [make_s3_command(dataset, product, output_path=output_path, s3_sync=s3_sync) for dataset in table['observation_id']]
                 
         else:
-            curl_list = ['curl {0}{1}_{2} -o {5}/{3}_{4}.fits.gz'.format(BASE_URL, dataset, level, dataset.lower(), level.lower(), output_path) for dataset in table['observation_id']]
+            curl_list = ['curl {0}{1}_{2}.FITS -o {5}/{3}_{4}.fits'.format(BASE_URL, dataset.upper(), level.upper(), dataset.lower(), level.lower(), output_path) for dataset in table['observation_id']]
     
     if script_name is not None:
         fp = open(script_name, 'w')
