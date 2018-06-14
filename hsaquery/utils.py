@@ -1,6 +1,27 @@
 """
 Utilities
 """
+import os
+import warnings
+import numpy as np
+
+def set_warnings(numpy_level='ignore', astropy_level='ignore'):
+    """
+    Set global numpy and astropy warnings
+    
+    Parameters
+    ----------
+    numpy_level : {'ignore', 'warn', 'raise', 'call', 'print', 'log'}
+        Numpy error level (see `~numpy.seterr`).
+        
+    astropy_level : {'error', 'ignore', 'always', 'default', 'module', 'once'}
+        Astropy error level (see `~warnings.simplefilter`).
+    
+    """
+    from astropy.utils.exceptions import AstropyWarning
+    
+    np.seterr(all=numpy_level)
+    warnings.simplefilter(astropy_level, category=AstropyWarning)
 
 def radec_to_targname(ra=0, dec=0, scl=10000):
     """Turn decimal degree coordinates into a string

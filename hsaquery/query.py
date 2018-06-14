@@ -35,6 +35,8 @@ ARTIFACT.FILE_EXTENSION
 
 DEFAULT_FIELDS = """OBSERVATION
 TARGET.TARGET_NAME
+TARGET.TARGET_DESCRIPTION
+TARGET.MOVING_TARGET
 POSITION.RA
 POSITION.DEC
 POSITION.ECL_LAT
@@ -46,6 +48,7 @@ POSITION.STC_S_TAILORED
 POSITION.FOV_SIZE
 ENERGY.FILTER
 ENERGY.BAND_NAME
+ENERGY.WAVE_CENTRAL
 PROPOSAL.PROPOSAL_ID
 PROPOSAL.SCIENCE_CATEGORY
 PROPOSAL.PI_NAME
@@ -73,13 +76,15 @@ DEFAULT_RENAME = {'EXPOSURE_DURATION':'VISIT_DURATION',
 DEFAULT_COLUMN_FORMAT = {'start_time_mjd':'.4f',
            'end_time_mjd':'.4f',
            'exptime':'.0f',
+           'visit_duration':'.0f',
            'ra':'.6f',
            'dec':'.6f',
            'ecl_lat':'.6f',
            'ecl_lon':'.6f',
            'gal_lat':'.6f',
            'gal_lon':'.6f',
-           'fov_size':'.3f'}#,
+           'fov_size':'.3f',
+           'wave_central':'.0f'}#,
            #'pixel_scale':'.3f'}
 
 # Don't get calibrations.  Can't use "INTENT LIKE 'SCIENCE'" because some 
@@ -93,7 +98,7 @@ DEFAULT_EXTRA += ["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib)
 
 INSTRUMENT_DETECTORS = {'WFC3-UVIS':'UVIS', 'WFC3-IR':'IR', 'ACS-WFC':'WFC', 'ACS-HRC':'HRC', 'WFPC2':'1', 'STIS-NUV':'NUV-MAMA', 'STIS-ACQ':'CCD'}
 
-def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], extensions=['RAW','C1M'], extra=DEFAULT_EXTRA,  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True, get_query_string=False):
+def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], extensions=['RAW','C1M'], extra=DEFAULT_EXTRA,  fields=','.join(DEFAULT_FIELDS.split()), maxitems=100000, rename_columns=DEFAULT_RENAME, lower=True, sort_column=['OBSERVATION_ID'], remove_tempfile=True, get_query_string=False, quiet=True):
     """
     
     Optional position box query:
@@ -108,9 +113,14 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
     import os
     import tempfile   
     import urllib.request
+    import time
+    
     from astropy.table import Table
     from . import utils
     
+    if quiet:
+        utils.set_warnings(numpy_level='ignore', astropy_level='ignore')
+        
     qlist = []
     
     # Box search around position
@@ -153,7 +163,7 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
     fp.close()
 
     vo_tempfile = fp.name +'.votable'
-    os.system('wget \"'+query+'\" -O {0}'.format(vo_tempfile))
+    os.system('wget --quiet \"'+query+'\" -O {0}'.format(vo_tempfile))
     
     lines = open(vo_tempfile).readlines()
     lines[0] = lines[0].replace('eHST results', 'results')
@@ -166,10 +176,14 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
     # fp.write(the_page.replace('"',''))
     # fp.close()
     
-    print('xxx', fp.name)
-    
-    tab = Table.read(vo_tempfile, format='votable')
+    try:
+        tab = Table.read(vo_tempfile, format='votable')
+    except:
+        print('Failed to read temporary file {0}.\n\nThis is likely a problem with the query that returned no results: \n\nwget \"{1}\" -O {2}'.format(vo_tempfile, query, vo_tempfile))
+        return False
+        
     tab.meta['query'] = query, 'Query string'
+    tab.meta['qtime'] = time.ctime(), 'Query timestamp'
     
     # Compute file extension
     if 'ARTIFACT_ID' in tab.colnames:
