@@ -3,7 +3,13 @@ Python tools for querying the ESA Hubble Science Archive (http://archives.esac.e
 
 ## Installation:
 
+    # From PIP
     pip install hsaquery
+    
+    # Latest version of the respository
+    git clone https://github.com/gbrammer/esa-hsaquery.git
+    cd esa-hsaquery
+    python setup.py install
     
 ## Demo:
 
