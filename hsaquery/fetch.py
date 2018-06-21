@@ -74,7 +74,7 @@ def make_curl_script(table, level=None, script_name=None, inst_products=DEFAULT_
                     if s3_sync:
                         curl_list.append(make_s3_command(dataset, product, output_path=output_path, s3_sync=s3_sync))                            
                     else:
-                        curl_list.append('curl {0}{1}_{2}.FITS -o {5}/{3}_{4}.fits'.format(BASE_URL, dataset.upper(), product.upper(), dataset, product, output_path))
+                        curl_list.append('curl {0}{1}_{2}.FITS -o {5}/{3}_{4}.fits'.format(BASE_URL, dataset.upper(), product.upper(), dataset.lower(), product.lower(), output_path))
             
     else:
         if s3_sync:
