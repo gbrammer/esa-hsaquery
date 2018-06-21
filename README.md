@@ -10,7 +10,7 @@ Python tools for querying the ESA Hubble Science Archive (http://archives.esac.e
 ```python
 >>> from hsaquery import query
 
->>> tab = query.run_query(box=None, proposid=[11359], instruments=['WFC3'], 
+>>> tab = query.run_query(box=None, proposid=[11359], instruments=['WFC3-IR'], 
                      extensions=['FLT'], filters=['G141'], extra=[])
                      
 >>> print(tab['observation_id', 'filter', 'exptime'])
