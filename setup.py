@@ -11,6 +11,10 @@ import os
 args = 'git describe --tags'
 p = subprocess.Popen(args.split(), stdout=subprocess.PIPE)
 version = p.communicate()[0].decode("utf-8").strip()
+
+#version = "0.1.8"
+version = "0.1.9" # Fix file extensions
+
 #lines = open('grizli/version.py').readlines()
 version_str = """# git describe --tags
 __version__ = "{0}"\n""".format(version)
@@ -23,8 +27,6 @@ print('Git version: {0}'.format(version))
 # Used for the long_description.  It's nice, because now 1) we have a top level
 # README file and 2) it's easier to type in the README file than to put a raw
 # string in below ...
-
-version = "0.1.8"
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
