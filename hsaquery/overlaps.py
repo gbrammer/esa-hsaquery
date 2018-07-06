@@ -394,7 +394,11 @@ def parse_overlap_table(tab):
         # Area
         PAs = []
         for i, polystr in enumerate(tab['footprint'][m]):
-            poly = query.parse_polygons(polystr)
+            try:
+                poly = query.parse_polygons(polystr)
+            except:
+                poly = query.old_parse_polygons(polystr)
+                
             PAs.append(int(np.round(query.get_orientat(polystr))))
             pshape = [Polygon(p) for p in poly]
             for j in range(1,len(poly)):
