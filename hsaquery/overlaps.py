@@ -33,7 +33,7 @@ def test():
     box = [73.5462181, -3.0147200, 3]
     tab = query.run_query(box=box, proposid=[], instruments=['WFC3-IR', 'ACS-WFC'], extensions=['FLT'], filters=['F110W'], extra=[])
     
-def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WFC3-UVIS', 'ACS-WFC'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True):
+def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WFC3-UVIS', 'ACS-WFC'], proposid=[], SKIP=False, extra=query.DEFAULT_EXTRA, close=True, use_parent=False):
     """
     Compute discrete groups from the parent table and find overlapping
     datasets.
@@ -64,6 +64,9 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WF
     close : bool
         If true, close the figure objects.
     
+    use_parent : bool
+        Use parent table rather than performing a new query
+        
     Returns
     -------
     tables : list
@@ -175,7 +178,10 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WF
         if (os.path.exists('{0}_footprint.pdf'.format(jname))) & SKIP:
             continue
                             
-        xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=extra)
+        if use_parent:
+            xtab = tab
+        else:
+            xtab = query.run_query(box=box, proposid=proposid, instruments=instruments, extensions=['FLT','C1M'], filters=filters, extra=extra)
         
         ebv = utils.get_irsa_dust(ra, dec, type='SandF')
         xtab.meta['NAME'] = jname
