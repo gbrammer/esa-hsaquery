@@ -94,7 +94,7 @@ DEFAULT_EXTRA = ['ARTIFACT.FILE_FORMAT LIKE \'image/fits\' AND ARTIFACT.FILE_EXT
 DEFAULT_EXTRA += ["TARGET.TARGET_NAME NOT LIKE '{0}'".format(calib) 
                  for calib in ['DARK','EARTH-CALIB', 'TUNGSTEN', 'BIAS',
                                'DARK-EARTH-CALIB', 'DARK-NM', 'DEUTERIUM',
-                               'INTFLAT', 'KSPOTS']]
+                               'INTFLAT', 'KSPOTS', 'VISFLAT']]
 
 INSTRUMENT_DETECTORS = {'WFC3-UVIS':'UVIS', 'WFC3-IR':'IR', 'ACS-WFC':'WFC', 'ACS-HRC':'HRC', 'WFPC2':'1', 'STIS-NUV':'NUV-MAMA', 'STIS-ACQ':'CCD'}
 
