@@ -285,14 +285,14 @@ def add_postcard(table, resolution=256):
        tab = grizli.utils.GTable(table)
        tab['observation_id','filter','orientat','postcard'][tab['visit'] == 1].write_sortable_html('tab.html', replace_braces=True, localhost=True, max_lines=10000, table_id=None, table_class='display compact', css=None)
         
-# def parse_polygons(polystr):
-#     if 'UNION' in polystr.upper():
-#         spl = polystr[:-1].split('Polygon')[1:]
-#     else:
-#         spl = polystr.replace('FK5','ICRS').split('ICRS')[1:]
-#         
-#     poly = [np.cast[float](p.split()).reshape((-1,2)) for p in spl]
-#     return poly
+def old_parse_polygons(polystr):
+    if 'UNION' in polystr.upper():
+        spl = polystr[:-1].split('Polygon')[1:]
+    else:
+        spl = polystr.replace('FK5','ICRS').split('ICRS')[1:]
+        
+    poly = [np.cast[float](p.split()).reshape((-1,2)) for p in spl]
+    return poly
 
 def parse_polygons(polystr):
     if hasattr(polystr, 'decode'):
@@ -344,8 +344,11 @@ def get_orientat(polystr='Polygon ICRS 127.465487 18.855605 127.425760 18.853486
     from astropy.coordinates import Angle
     import astropy.units as u
     
-    p = parse_polygons(polystr)[0]
-    
+    try:
+        p = parse_polygons(polystr)[0]
+    except:
+        p = old_parse_polygons(polystr)[0]
+        
     dra = (p[1,0]-p[0,0])*np.cos(p[0,1]/180*np.pi)
     dde = p[1,1] - p[0,1]
     
