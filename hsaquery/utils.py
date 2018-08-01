@@ -5,6 +5,56 @@ import os
 import warnings
 import numpy as np
 
+def table_from_info(info):
+    """
+    Generate a query-like table based on header keywords parsed by 
+    `~grizli.pipeline.auto_script.parse_visits`.
+    
+    """
+    from astropy.table import Table
+    import astropy.wcs as pywcs
+    import astropy.io.fits as pyfits
+    
+    from . import query
+    
+    tab = Table()
+    tab['visit_duration'] = info['EXPTIME']
+    tab['ra'] = info['RA_TARG']
+    tab['dec'] = info['DEC_TARG']
+    tab['exptime'] = info['EXPTIME']
+    tab['detector'] = info['DETECTOR']
+    
+    swap_detector = {}
+    for k in query.INSTRUMENT_DETECTORS:
+        swap_detector[query.INSTRUMENT_DETECTORS[k]] = k
+    
+    tab['instdet'] = [swap_detector[det] for det in info['DETECTOR']]
+    tab['aperture'] = info['DETECTOR']
+    
+    tab['observation_id'] = [os.path.basename(file).split('_')[0].lower() for file in info['FILE']]
+    tab['file_type'] = [os.path.basename(file).split('_')[1].upper() for file in info['FILE']]
+
+    tab['artifact_id'] = info['FILE']
+    tab['target'] = info['TARGNAME']
+    tab['filter'] = info['FILTER']
+    
+    # Footprints
+    footprints = []
+    proposal_id = []
+    for file in info['FILE']:
+        im = pyfits.open(file)
+        wcs = pywcs.WCS(im['SCI',1].header, fobj=im)
+        fp = wcs.calc_footprint()
+        footstr = '{'+', '.join([list(fpi).__repr__()[1:-1] for fpi in fp])+'}'
+        footprints.append(footstr)
+        proposal_id.append(im[0].header['PROPOSID'])
+    
+    tab['proposal_id'] = proposal_id
+    tab['footprint'] = footprints
+    tab['stc_s_tailored'] = tab['footprint']
+    
+    return tab
+    
 def set_warnings(numpy_level='ignore', astropy_level='ignore'):
     """
     Set global numpy and astropy warnings
