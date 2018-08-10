@@ -281,7 +281,10 @@ def find_overlaps(tab, buffer_arcmin=1., filters=[], instruments=['WFC3-IR', 'WF
     
 def summary_table(tabs=None, output='overlap_summary'):
     import glob
+    from collections import OrderedDict
     from astropy.table import Table
+    import astropy.table
+    
     try:
         from grizli import utils
         HAS_GRIZLI = True
@@ -290,14 +293,31 @@ def summary_table(tabs=None, output='overlap_summary'):
         
     if tabs is None:
         tabs = [Table.read(file) for file in glob.glob('*footprint.fits')]
-
+    
+    # for tab in tabs:
+    #     tab.remove_column('moving_target')
+    # #
+    # for tab in tabs:
+    #     prop = np.cast[int](tab['proposal_id'])
+    #     tab.remove_column('proposal_id')
+    #     tab['proposal_id'] = prop
+        
     names, props = parse_overlap_table(tabs[0])
     props = []
+    pdict = OrderedDict()
+    for name in names:
+        pdict[name] = []
+        
     for i in range(len(tabs)):
-        print(i)
-        props.append(parse_overlap_table(tabs[i])[1])
-    
-    mtab = Table(rows=props, names=names)
+        print('Parse table ', i)
+        n_i, p_i = parse_overlap_table(tabs[i])
+        for name in names:
+            if name in n_i:
+                pdict[name].append(p_i[n_i.index(name)])
+            else:
+                pdict[name].append('---')
+                          
+    mtab = Table(pdict) #rows=props, names=names)
     mtab['RA'].format = '.5f'
     mtab['DEC'].format = '.5f'
     mtab.rename_column('MW_EBV', 'E(B-V)')
