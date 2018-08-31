@@ -194,7 +194,10 @@ def run_query(box=None, proposid=[13871], instruments=['WFC3-IR'], filters=[], e
         if len(extensions) > 0:
             ext_test = np.array([tab['FILE_TYPE'] == ext for ext in extensions]).sum(axis=0) > 0
             tab = tab[ext_test]
-        
+    
+    if len(tab) == 0:
+        return False
+             
     # Parse instrument configuration
     if 'INSTRUMENT_CONFIGURATION' in tab.colnames:
         aperture = [str(conf).split('|')[0].split('=')[1] for conf in tab['INSTRUMENT_CONFIGURATION']]
